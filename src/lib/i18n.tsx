@@ -102,9 +102,6 @@ const translations = {
   "signup.select": { en: "Select", fr: "Sélectionner" },
   "signup.passwordPlaceholder": { en: "Min 12 characters", fr: "Min 12 caractères" },
   "signup.passwordConfirmPlaceholder": { en: "Re-enter your password", fr: "Entrez à nouveau votre mot de passe" },
-
-  // Auth
-  "auth.backHome": { en: "Back Home", fr: "Retour à l'accueil" },
 } as const;
 
 type TranslationKey = keyof typeof translations;

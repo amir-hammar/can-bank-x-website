@@ -35,6 +35,7 @@ const SignIn = () => {
             type="email"
             placeholder="you@example.com"
             autoComplete="email"
+            className="bg-muted border-border input-glow"
             {...register("email")}
           />
           {errors.email && (
@@ -48,6 +49,7 @@ const SignIn = () => {
             id="password"
             placeholder="Enter your password"
             autoComplete="current-password"
+            className="bg-muted border-border input-glow"
             {...register("password")}
           />
           {errors.password && (
@@ -55,7 +57,7 @@ const SignIn = () => {
           )}
         </div>
 
-        <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+        <Button type="submit" className="w-full btn-royal text-primary-foreground border-0" size="lg" disabled={isSubmitting}>
           {t("signin.button")}
         </Button>
 
