@@ -1,0 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Serif+Display&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 30% 6%;
+    --foreground: 220 15% 92%;
+
+    --card: 222 25% 10%;
+    --card-foreground: 220 15% 92%;
+
+    --popover: 222 25% 10%;
+    --popover-foreground: 220 15% 92%;
+
+    --primary: 225 73% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 25% 14%;
+    --secondary-foreground: 220 15% 92%;
+
+    --muted: 222 20% 12%;
+    --muted-foreground: 220 10% 55%;
+
+    --accent: 225 90% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 222 20% 18%;
+    --input: 222 20% 18%;
+    --ring: 225 73% 50%;
+
+    --radius: 0.625rem;
+
+    --sidebar-background: 222 30% 4%;
+    --sidebar-foreground: 220 15% 92%;
+    --sidebar-primary: 225 73% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 225 50% 25%;
+    --sidebar-accent-foreground: 220 15% 92%;
+    --sidebar-border: 222 20% 16%;
+    --sidebar-ring: 225 73% 50%;
+
+    --font-heading: 'DM Serif Display', serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-heading);
+  }
+}
+
+/* Glass card effect */
+.glass-card {
+  background: hsla(222, 25%, 10%, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid hsla(225, 73%, 50%, 0.15);
+}
+
+/* Royal blue gradient button */
+.btn-royal {
+  background: linear-gradient(135deg, hsl(225, 73%, 45%), hsl(225, 90%, 60%));
+  transition: all 0.3s ease;
+}
+.btn-royal:hover {
+  box-shadow: 0 0 20px hsla(225, 90%, 55%, 0.4), 0 0 40px hsla(225, 90%, 55%, 0.15);
+}
+
+/* Glow effect for inputs on focus */
+.input-glow:focus {
+  box-shadow: 0 0 0 2px hsla(225, 73%, 50%, 0.3), 0 0 15px hsla(225, 73%, 50%, 0.1);
+}
+
+/* Subtle neon glow */
+.neon-glow {
+  box-shadow: 0 0 15px hsla(225, 90%, 55%, 0.2), 0 0 30px hsla(225, 90%, 55%, 0.1);
+}
+
+/* City background overlay */
+.city-bg {
+  position: relative;
+}
+.city-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, hsla(222, 30%, 4%, 0.7) 0%, hsla(222, 30%, 6%, 0.85) 50%, hsla(222, 30%, 6%, 0.95) 100%);
+  z-index: 1;
+}
