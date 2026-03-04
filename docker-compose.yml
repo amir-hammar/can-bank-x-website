@@ -1,0 +1,16 @@
+services:
+  can-bank-x-website:
+    container_name: can-bank-x-website
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8083:80"
+    networks:
+      - can-bank-x-network
+    restart: unless-stopped
+
+networks:
+  can-bank-x-network:
+    name: can-bank-x-network
+    external: true

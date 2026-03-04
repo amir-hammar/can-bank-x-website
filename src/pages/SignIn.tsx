@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { signInSchema, type SignInValues } from "@/lib/validation";
 import AuthLayout from "@/components/AuthLayout";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,11 @@ import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/PasswordInput";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
+import { signInWithKeycloak } from "@/lib/keycloak";
 
 const SignIn = () => {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const {
     register,
     handleSubmit,
@@ -20,9 +22,15 @@ const SignIn = () => {
     resolver: zodResolver(signInSchema),
   });
 
-  const onSubmit = (data: SignInValues) => {
-    toast.success("Sign in validated successfully");
-    console.log("Sign in data:", data);
+  const onSubmit = async (data: SignInValues) => {
+    try {
+      await signInWithKeycloak(data.email, data.password);
+      toast.success("Signed in successfully");
+      navigate("/mfa/setup");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Sign in failed";
+      toast.error(message);
+    }
   };
 
   return (

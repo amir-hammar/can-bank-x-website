@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { signUpSchema, type SignUpValues, CANADIAN_PROVINCES } from "@/lib/validation";
 import AuthLayout from "@/components/AuthLayout";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ const inputClasses = "bg-muted border-border input-glow";
 const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { t } = useI18n();
+  const navigate = useNavigate();
 
   const {
     register,
@@ -52,9 +53,9 @@ const SignUp = () => {
     defaultValues: { country: "Canada" },
   });
 
-  const onSubmit = (data: SignUpValues) => {
+  const onSubmit = async (_data: SignUpValues) => {
     toast.success("Sign up validated successfully");
-    console.log("Sign up data:", data);
+    navigate("/mfa/setup");
   };
 
   return (
