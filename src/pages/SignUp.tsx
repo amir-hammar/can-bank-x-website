@@ -1,150 +1,87 @@
-import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useNavigate } from "react-router-dom";
-import { signUpSchema, type SignUpValues, CANADIAN_PROVINCES } from "@/lib/validation";
+import { Link } from "react-router-dom";
 import AuthLayout from "@/components/AuthLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { PasswordInput } from "@/components/PasswordInput";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
-
-const FormField = ({
-  label,
-  id,
-  error,
-  children,
-}: {
-  label: string;
-  id: string;
-  error?: string;
-  children: React.ReactNode;
-}) => (
-  <div className="space-y-2">
-    <Label htmlFor={id}>{label}</Label>
-    {children}
-    {error && <p className="text-sm text-destructive">{error}</p>}
-  </div>
-);
-
-const inputClasses = "bg-muted border-border input-glow";
+import { UserPlus, Shield, CheckCircle2 } from "lucide-react";
 
 const SignUp = () => {
-  const [showPassword, setShowPassword] = useState(false);
   const { t } = useI18n();
-  const navigate = useNavigate();
 
-  const {
-    register,
-    control,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<SignUpValues>({
-    resolver: zodResolver(signUpSchema),
-    defaultValues: { country: "Canada" },
-  });
+  const handleSignUp = () => {
+    // Redirect to Keycloak authorization with state parameter to indicate signup
+    const gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL
+    const clientId = import.meta.env.VITE_KEYCLOAK_CLIENT_ID ?? "can-bank-x-api";
+    const redirectUri = import.meta.env.VITE_REDIRECT_URI ?? "http://localhost:8083/callback";
 
-  const onSubmit = async (_data: SignUpValues) => {
-    toast.success("Sign up validated successfully");
-    navigate("/mfa/setup");
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: "openid profile email",
+      state: "signup",
+      prompt: "login",
+    });
+
+    window.location.href = `${gatewayUrl}/auth/realms/can-bank-x/protocol/openid-connect/auth?${params.toString()}`;
   };
 
   return (
     <AuthLayout title={t("signup.title")} subtitle={t("signup.subtitle")}>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-        <FormField label={t("signup.fullName")} id="fullName" error={errors.fullName?.message}>
-          <Input id="fullName" placeholder="Jean-François O'Brien" autoComplete="name" className={inputClasses} {...register("fullName")} />
-        </FormField>
-
-        <fieldset className="space-y-4 rounded-lg border border-border p-4">
-          <legend className="px-2 text-sm font-medium text-muted-foreground">{t("signup.address")}</legend>
-
-          <FormField label={t("signup.street")} id="street" error={errors.street?.message}>
-            <Input id="street" placeholder="123 Maple St" autoComplete="street-address" className={inputClasses} {...register("street")} />
-          </FormField>
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label={t("signup.city")} id="city" error={errors.city?.message}>
-              <Input id="city" placeholder="Toronto" autoComplete="address-level2" className={inputClasses} {...register("city")} />
-            </FormField>
-
-            <FormField label={t("signup.province")} id="province" error={errors.province?.message}>
-              <Controller
-                name="province"
-                control={control}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger id="province" className={inputClasses}>
-                      <SelectValue placeholder={t("signup.select")} />
-                    </SelectTrigger>
-                    <SelectContent className="bg-card border-border">
-                      {CANADIAN_PROVINCES.map((p) => (
-                        <SelectItem key={p} value={p}>
-                          {p}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </FormField>
+      <div className="space-y-6">
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/10 border border-primary/20">
+            <Shield className="h-5 w-5 text-primary" />
+            <div className="flex-1 text-sm">
+              <p className="font-medium text-foreground">Secure Registration</p>
+              <p className="text-muted-foreground text-xs">
+                Create your account with enterprise-grade security
+              </p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label={t("signup.postalCode")} id="postalCode" error={errors.postalCode?.message}>
-              <Input id="postalCode" placeholder="A1A 1A1" autoComplete="postal-code" className={inputClasses} {...register("postalCode")} />
-            </FormField>
+          <Button 
+            onClick={handleSignUp}
+            className="w-full btn-royal text-primary-foreground border-0 gap-2" 
+            size="lg"
+          >
+            <UserPlus className="h-5 w-5" />
+            {t("signup.button")}
+          </Button>
+        </div>
 
-            <FormField label={t("signup.country")} id="country" error={errors.country?.message}>
-              <Input id="country" autoComplete="country-name" className={inputClasses} {...register("country")} />
-            </FormField>
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-foreground">What happens next:</p>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-foreground">Create Your Account</p>
+                <p className="text-xs">Set up your credentials on our secure portal</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-foreground">Set Up MFA</p>
+                <p className="text-xs">Scan QR code with Google Authenticator or similar app</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-foreground">Complete Profile</p>
+                <p className="text-xs">Provide your personal details for customer registration</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-foreground">KYC Verification</p>
+                <p className="text-xs">Submit documents for Know Your Customer verification</p>
+              </div>
+            </div>
           </div>
-        </fieldset>
-
-        <FormField label={t("signup.email")} id="email" error={errors.email?.message}>
-          <Input id="email" type="email" placeholder="you@example.com" autoComplete="email" className={inputClasses} {...register("email")} />
-        </FormField>
-
-        <FormField label={t("signup.password")} id="password" error={errors.password?.message}>
-          <PasswordInput
-            id="password"
-            placeholder={t("signup.passwordPlaceholder")}
-            autoComplete="new-password"
-            showPassword={showPassword}
-            onToggleVisibility={() => setShowPassword((p) => !p)}
-            className={inputClasses}
-            {...register("password")}
-          />
-        </FormField>
-
-        <FormField label={t("signup.passwordConfirm")} id="passwordConfirmation" error={errors.passwordConfirmation?.message}>
-          <PasswordInput
-            id="passwordConfirmation"
-            placeholder={t("signup.passwordConfirmPlaceholder")}
-            autoComplete="new-password"
-            showPassword={showPassword}
-            onToggleVisibility={() => setShowPassword((p) => !p)}
-            className={inputClasses}
-            {...register("passwordConfirmation")}
-          />
-        </FormField>
-
-        <FormField label={t("signup.nas")} id="nas" error={errors.nas?.message}>
-          <Input id="nas" placeholder="123 456 789" autoComplete="off" className={inputClasses} {...register("nas")} />
-        </FormField>
-
-        <Button type="submit" className="w-full btn-royal text-primary-foreground border-0" size="lg" disabled={isSubmitting}>
-          {t("signup.button")}
-        </Button>
+        </div>
 
         <p className="text-center text-sm text-muted-foreground">
           {t("signup.hasAccount")}{" "}
@@ -152,7 +89,7 @@ const SignUp = () => {
             {t("signup.signinLink")}
           </Link>
         </p>
-      </form>
+      </div>
     </AuthLayout>
   );
 };

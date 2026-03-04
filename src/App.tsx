@@ -7,7 +7,8 @@ import { I18nProvider } from "@/lib/i18n";
 import Index from "./pages/Index";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
-import MfaSetup from "./pages/MfaSetup";
+import OAuthCallback from "./pages/OAuthCallback";
+import CompleteRegistration from "./pages/CompleteRegistration";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,7 +24,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/signin" element={<SignIn />} />
             <Route path="/signup" element={<SignUp />} />
-            <Route path="/mfa/setup" element={<MfaSetup />} />
+            <Route path="/callback" element={<OAuthCallback />} />
+            <Route path="/complete-registration" element={<CompleteRegistration />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

@@ -9,31 +9,46 @@ export interface KeycloakTokenResponse {
 
 const ACCESS_TOKEN_KEY = "canbankx.access_token";
 const REFRESH_TOKEN_KEY = "canbankx.refresh_token";
+const USER_INFO_KEY = "canbankx.user_info";
 
 const getAuthConfig = () => {
-  const realm = import.meta.env.VITE_KEYCLOAK_REALM ?? "can-bank-x";
-  const clientId = import.meta.env.VITE_KEYCLOAK_CLIENT_ID ?? "can-bank-x-web";
-  const clientSecret = import.meta.env.VITE_KEYCLOAK_CLIENT_SECRET ?? "";
-  const tokenPath = import.meta.env.VITE_KEYCLOAK_TOKEN_PATH ?? `/realms/${realm}/protocol/openid-connect/token`;
+  const gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL
+  const clientId = import.meta.env.VITE_KEYCLOAK_CLIENT_ID ?? "can-bank-x-api";
+  const redirectUri = import.meta.env.VITE_REDIRECT_URI ?? "http://localhost:8083/callback";
 
-  return { realm, clientId, clientSecret, tokenPath };
+  return { gatewayUrl, clientId, redirectUri };
 };
 
-export const signInWithKeycloak = async (username: string, password: string): Promise<KeycloakTokenResponse> => {
-  const { clientId, clientSecret, tokenPath } = getAuthConfig();
-
-  const body = new URLSearchParams({
-    grant_type: "password",
+/**
+ * Initiates the OAuth 2.0 Authorization Code flow by redirecting to Keycloak
+ */
+export const redirectToLogin = () => {
+  const { gatewayUrl, clientId, redirectUri } = getAuthConfig();
+  
+  const params = new URLSearchParams({
     client_id: clientId,
-    username,
-    password,
+    redirect_uri: redirectUri,
+    response_type: "code",
+    scope: "openid profile email",
   });
 
-  if (clientSecret) {
-    body.set("client_secret", clientSecret);
-  }
+  window.location.href = `${gatewayUrl}/auth/realms/can-bank-x/protocol/openid-connect/auth?${params.toString()}`;
+};
 
-  const response = await fetch(tokenPath, {
+/**
+ * Exchanges the authorization code for JWT tokens
+ */
+export const exchangeCodeForToken = async (code: string): Promise<KeycloakTokenResponse> => {
+  const { gatewayUrl, clientId, redirectUri } = getAuthConfig();
+
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    code,
+    client_id: clientId,
+    redirect_uri: redirectUri,
+  });
+
+  const response = await fetch(`${gatewayUrl}/auth/realms/can-bank-x/protocol/openid-connect/token`, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -44,7 +59,7 @@ export const signInWithKeycloak = async (username: string, password: string): Pr
   const payload = await response.json().catch(() => null);
 
   if (!response.ok || !payload?.access_token) {
-    const reason = payload?.error_description ?? payload?.error ?? "Unable to sign in";
+    const reason = payload?.error_description ?? payload?.error ?? "Unable to exchange code for token";
     throw new Error(reason);
   }
 
@@ -57,4 +72,43 @@ export const signInWithKeycloak = async (username: string, password: string): Pr
   return tokens;
 };
 
+/**
+ * Gets the current access token from storage
+ */
 export const getAccessToken = () => localStorage.getItem(ACCESS_TOKEN_KEY);
+
+/**
+ * Gets the current refresh token from storage
+ */
+export const getRefreshToken = () => localStorage.getItem(REFRESH_TOKEN_KEY);
+
+/**
+ * Checks if the user is authenticated
+ */
+export const isAuthenticated = (): boolean => {
+  return !!getAccessToken();
+};
+
+/**
+ * Logs out the user by clearing stored tokens
+ */
+export const logout = () => {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(USER_INFO_KEY);
+};
+
+/**
+ * Stores user info in local storage
+ */
+export const setUserInfo = (userInfo: unknown) => {
+  localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+};
+
+/**
+ * Gets user info from local storage
+ */
+export const getUserInfo = () => {
+  const info = localStorage.getItem(USER_INFO_KEY);
+  return info ? JSON.parse(info) : null;
+};

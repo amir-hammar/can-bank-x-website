@@ -1,73 +1,55 @@
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useNavigate } from "react-router-dom";
-import { signInSchema, type SignInValues } from "@/lib/validation";
+import { Link } from "react-router-dom";
 import AuthLayout from "@/components/AuthLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { PasswordInput } from "@/components/PasswordInput";
-import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
-import { signInWithKeycloak } from "@/lib/keycloak";
+import { redirectToLogin } from "@/lib/keycloak";
+import { LogIn, Shield } from "lucide-react";
 
 const SignIn = () => {
   const { t } = useI18n();
-  const navigate = useNavigate();
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<SignInValues>({
-    resolver: zodResolver(signInSchema),
-  });
 
-  const onSubmit = async (data: SignInValues) => {
-    try {
-      await signInWithKeycloak(data.email, data.password);
-      toast.success("Signed in successfully");
-      navigate("/mfa/setup");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Sign in failed";
-      toast.error(message);
-    }
+  const handleSignIn = () => {
+    redirectToLogin();
   };
 
   return (
     <AuthLayout title={t("signin.title")} subtitle={t("signin.subtitle")}>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-        <div className="space-y-2">
-          <Label htmlFor="email">{t("signin.email")}</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="you@example.com"
-            autoComplete="email"
-            className="bg-muted border-border input-glow"
-            {...register("email")}
-          />
-          {errors.email && (
-            <p className="text-sm text-destructive">{errors.email.message}</p>
-          )}
+      <div className="space-y-6">
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/10 border border-primary/20">
+            <Shield className="h-5 w-5 text-primary" />
+            <div className="flex-1 text-sm">
+              <p className="font-medium text-foreground">Secure Authentication</p>
+              <p className="text-muted-foreground text-xs">
+                Protected by Keycloak with multi-factor authentication
+              </p>
+            </div>
+          </div>
+
+          <Button 
+            onClick={handleSignIn}
+            className="w-full btn-royal text-primary-foreground border-0 gap-2" 
+            size="lg"
+          >
+            <LogIn className="h-5 w-5" />
+            {t("signin.button")}
+          </Button>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="password">{t("signin.password")}</Label>
-          <PasswordInput
-            id="password"
-            placeholder="Enter your password"
-            autoComplete="current-password"
-            className="bg-muted border-border input-glow"
-            {...register("password")}
-          />
-          {errors.password && (
-            <p className="text-sm text-destructive">{errors.password.message}</p>
-          )}
+        <div className="space-y-3 text-sm text-muted-foreground">
+          <div className="flex items-start gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5" />
+            <p>You'll be redirected to our secure authentication portal</p>
+          </div>
+          <div className="flex items-start gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5" />
+            <p>If this is your first time, you'll set up MFA with an authenticator app</p>
+          </div>
+          <div className="flex items-start gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5" />
+            <p>After authentication, you'll be returned here to continue</p>
+          </div>
         </div>
-
-        <Button type="submit" className="w-full btn-royal text-primary-foreground border-0" size="lg" disabled={isSubmitting}>
-          {t("signin.button")}
-        </Button>
 
         <p className="text-center text-sm text-muted-foreground">
           {t("signin.noAccount")}{" "}
@@ -75,7 +57,7 @@ const SignIn = () => {
             {t("signin.signupLink")}
           </Link>
         </p>
-      </form>
+      </div>
     </AuthLayout>
   );
 };
