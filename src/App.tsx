@@ -6,7 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { I18nProvider } from "@/lib/i18n";
 import Index from "./pages/Index";
 import OAuthCallback from "./pages/OAuthCallback";
-import CompleteRegistration from "./pages/CompleteRegistration";
+import KycPending from "./pages/KycPending";
+import KycRefused from "./pages/KycRefused";
+import UserHome from "./pages/UserHome";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,7 +23,9 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/callback" element={<OAuthCallback />} />
-            <Route path="/complete-registration" element={<CompleteRegistration />} />
+            <Route path="/kyc/pending" element={<KycPending />} />
+            <Route path="/kyc/refused" element={<KycRefused />} />
+            <Route path="/home" element={<UserHome />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

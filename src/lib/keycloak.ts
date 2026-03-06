@@ -141,6 +141,34 @@ export const logout = () => {
 };
 
 /**
+ * Best-effort logout request to Keycloak through API Gateway.
+ */
+export const logoutFromGateway = async () => {
+  const { gatewayUrl, clientId } = getAuthConfig();
+  const refreshToken = getRefreshToken();
+  const accessToken = getAccessToken();
+
+  const body = new URLSearchParams({ client_id: clientId });
+  if (refreshToken) {
+    body.set("refresh_token", refreshToken);
+  }
+
+  const headers: HeadersInit = {
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+
+  await fetch(`${gatewayUrl}/auth/realms/can-bank-x/protocol/openid-connect/logout`, {
+    method: "POST",
+    headers,
+    body,
+  }).catch(() => null);
+};
+
+/**
  * Stores user info in local storage
  */
 export const setUserInfo = (userInfo: unknown) => {

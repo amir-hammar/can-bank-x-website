@@ -1,16 +1,112 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { consumeAuthFlow, exchangeCodeForToken, setUserInfo } from "@/lib/keycloak";
-import { getCurrentUser } from "@/lib/api";
+import { exchangeCodeForToken, setUserInfo } from "@/lib/keycloak";
+import { ApiError, getCurrentUser, normalizeKYCDecision, registerCustomer } from "@/lib/api";
+import { setPendingCustomerId } from "@/lib/kyc";
 import { Crown } from "lucide-react";
 import citySkyline from "@/assets/city-skyline.jpg";
+
+const asRecord = (value: unknown): Record<string, unknown> | null => {
+  if (value && typeof value === "object") {
+    return value as Record<string, unknown>;
+  }
+
+  return null;
+};
+
+const getStringFromRecord = (record: Record<string, unknown>, keys: string[]): string | null => {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+};
+
+const getCustomerIdFromUser = (userInfo: unknown): string | null => {
+  const record = asRecord(userInfo);
+  if (!record) {
+    return null;
+  }
+
+  const directCustomerId = getStringFromRecord(record, ["customer_id", "customerId"]);
+  if (directCustomerId) {
+    return directCustomerId;
+  }
+
+  const customerRecord = asRecord(record.customer);
+  if (!customerRecord) {
+    return null;
+  }
+
+  return getStringFromRecord(customerRecord, ["customer_id", "customerId", "id"]);
+};
+
+const getKycStatusFromUser = (userInfo: unknown): string | null => {
+  const record = asRecord(userInfo);
+  if (!record) {
+    return null;
+  }
+
+  const kycRecord = asRecord(record.kyc);
+  if (kycRecord) {
+    return getStringFromRecord(kycRecord, ["status"]);
+  }
+
+  return getStringFromRecord(record, ["kyc_status", "kycStatus"]);
+};
+
+const decodeJwtPayload = (token: string): Record<string, unknown> | null => {
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) {
+      return null;
+    }
+
+    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const normalized = payload.padEnd(Math.ceil(payload.length / 4) * 4, "=");
+    const decoded = atob(normalized);
+    const parsed = JSON.parse(decoded);
+
+    if (parsed && typeof parsed === "object") {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    // ignore decode failures and fallback to defaults
+  }
+
+  return null;
+};
+
+const getStringClaim = (claims: Record<string, unknown> | null, keys: string[]): string | null => {
+  if (!claims) {
+    return null;
+  }
+
+  for (const key of keys) {
+    const value = claims[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+};
 
 const OAuthCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const hasHandledCallbackRef = useRef(false);
 
   useEffect(() => {
+    if (hasHandledCallbackRef.current) {
+      return;
+    }
+    hasHandledCallbackRef.current = true;
+
     const handleCallback = async () => {
       const code = searchParams.get("code");
       const errorParam = searchParams.get("error");
@@ -19,42 +115,101 @@ const OAuthCallback = () => {
       // Check for OAuth errors
       if (errorParam) {
         setError(errorDescription || errorParam);
-        setTimeout(() => navigate("/"), 8083);
         return;
       }
 
       // Check if code is present
       if (!code) {
         setError("No authorization code received");
-        setTimeout(() => navigate("/"), 8083);
         return;
       }
 
       try {
         // Exchange code for token
-        await exchangeCodeForToken(code);
+        const tokens = await exchangeCodeForToken(code);
+
+        const claims = decodeJwtPayload(tokens.access_token);
+
+        const preferredUsername =
+          getStringClaim(claims, ["preferred_username", "username"]) ??
+          `user${Date.now()}`;
+        const email =
+          getStringClaim(claims, ["email"]) ??
+          `${preferredUsername.replace(/[^a-zA-Z0-9._-]/g, "") || "user"}@example.com`;
+        const fullName =
+          getStringClaim(claims, ["name"]) ??
+          ([getStringClaim(claims, ["given_name"]), getStringClaim(claims, ["family_name"])]
+            .filter(Boolean)
+            .join(" ") ||
+          preferredUsername);
 
         // Fetch user info
-        const userInfo = await getCurrentUser();
+        let userInfo: unknown;
+        const ensureCustomerProfile = async () => {
+          try {
+            await registerCustomer({
+              username: preferredUsername,
+              email,
+              full_name: fullName,
+              street: "100 Main",
+              city: "Montreal",
+              province: "QC",
+              postal_code: "H2X 1Z5",
+              country: "Canada",
+              nas: "123456789",
+            });
+          } catch (registerErr) {
+            // Ignore conflicts (already created) and continue with a refetch.
+            if (!(registerErr instanceof ApiError && registerErr.status === 409)) {
+              throw registerErr;
+            }
+          }
+        };
+
+        try {
+          userInfo = await getCurrentUser();
+        } catch (err) {
+          const isMissingCustomerError =
+            err instanceof ApiError &&
+            (err.status === 404 ||
+              (err.status === 500 && err.message.toLowerCase().includes("invalid status code")));
+
+          if (isMissingCustomerError) {
+            await ensureCustomerProfile();
+            userInfo = await getCurrentUser();
+          } else {
+            throw err;
+          }
+        }
+
         setUserInfo(userInfo);
 
-        // Check if user needs to register as customer
-        // If the user is newly created in Keycloak but hasn't registered as a customer,
-        // redirect them to complete registration
-        const authFlow = consumeAuthFlow();
-        const isNewUser = searchParams.get("state") === "signup" || authFlow === "signup";
+        const userKycStatus = getKycStatusFromUser(userInfo);
+        const userDecision = normalizeKYCDecision(userKycStatus ?? undefined);
 
-        if (isNewUser) {
-          // Redirect to complete customer registration
-          navigate("/complete-registration");
-        } else {
-          // Redirect to dashboard or home
-          navigate("/");
+        if (userDecision === "approved") {
+          navigate("/home", { replace: true });
+          return;
         }
+
+        if (userDecision === "refused") {
+          navigate("/kyc/refused", { replace: true });
+          return;
+        }
+
+        if (userDecision === "pending") {
+          const customerId = getCustomerIdFromUser(userInfo);
+          if (customerId) {
+            setPendingCustomerId(customerId);
+          }
+          navigate("/kyc/pending", { replace: true });
+          return;
+        }
+
+        navigate("/kyc/pending", { replace: true });
       } catch (err) {
         const message = err instanceof Error ? err.message : "Authentication failed";
         setError(message);
-        setTimeout(() => navigate("/"), 8083);
       }
     };
 
@@ -80,7 +235,7 @@ const OAuthCallback = () => {
             <>
               <h2 className="font-heading text-2xl text-destructive">Authentication Error</h2>
               <p className="text-muted-foreground">{error}</p>
-              <p className="text-sm text-muted-foreground">Redirecting to sign in...</p>
+              <p className="text-sm text-muted-foreground">Please retry sign in from the landing page.</p>
             </>
           ) : (
             <>
