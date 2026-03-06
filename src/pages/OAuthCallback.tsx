@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { exchangeCodeForToken, setUserInfo } from "@/lib/keycloak";
-import { ApiError, getCurrentUser, normalizeKYCDecision, registerCustomer } from "@/lib/api";
+import {
+  consumeAuthFlow,
+  exchangeCodeForToken,
+  redirectToSignIn,
+  redirectToSignUp,
+  setUserInfo,
+} from "@/lib/keycloak";
+import { ApiError, getCurrentUser, registerCustomer } from "@/lib/api";
 import { setPendingCustomerId } from "@/lib/kyc";
+import { Button } from "@/components/ui/button";
 import { Crown } from "lucide-react";
 import citySkyline from "@/assets/city-skyline.jpg";
 
@@ -44,20 +51,6 @@ const getCustomerIdFromUser = (userInfo: unknown): string | null => {
   return getStringFromRecord(customerRecord, ["customer_id", "customerId", "id"]);
 };
 
-const getKycStatusFromUser = (userInfo: unknown): string | null => {
-  const record = asRecord(userInfo);
-  if (!record) {
-    return null;
-  }
-
-  const kycRecord = asRecord(record.kyc);
-  if (kycRecord) {
-    return getStringFromRecord(kycRecord, ["status"]);
-  }
-
-  return getStringFromRecord(record, ["kyc_status", "kycStatus"]);
-};
-
 const decodeJwtPayload = (token: string): Record<string, unknown> | null => {
   try {
     const parts = token.split(".");
@@ -95,6 +88,18 @@ const getStringClaim = (claims: Record<string, unknown> | null, keys: string[]):
   return null;
 };
 
+const getErrorText = (err: unknown): string => {
+  if (err instanceof ApiError) {
+    return `Request failed (${err.status}): ${err.message}`;
+  }
+
+  if (err instanceof Error) {
+    return err.message;
+  }
+
+  return "Authentication failed";
+};
+
 const OAuthCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -127,6 +132,7 @@ const OAuthCallback = () => {
       try {
         // Exchange code for token
         const tokens = await exchangeCodeForToken(code);
+        consumeAuthFlow();
 
         const claims = decodeJwtPayload(tokens.access_token);
 
@@ -183,33 +189,15 @@ const OAuthCallback = () => {
         }
 
         setUserInfo(userInfo);
-
-        const userKycStatus = getKycStatusFromUser(userInfo);
-        const userDecision = normalizeKYCDecision(userKycStatus ?? undefined);
-
-        if (userDecision === "approved") {
-          navigate("/home", { replace: true });
-          return;
+        const customerId = getCustomerIdFromUser(userInfo);
+        if (customerId) {
+          setPendingCustomerId(customerId);
         }
 
-        if (userDecision === "refused") {
-          navigate("/kyc/refused", { replace: true });
-          return;
-        }
-
-        if (userDecision === "pending") {
-          const customerId = getCustomerIdFromUser(userInfo);
-          if (customerId) {
-            setPendingCustomerId(customerId);
-          }
-          navigate("/kyc/pending", { replace: true });
-          return;
-        }
-
+        // Product rule: any successful auth continues to KYC pending.
         navigate("/kyc/pending", { replace: true });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Authentication failed";
-        setError(message);
+        setError(getErrorText(err));
       }
     };
 
@@ -235,7 +223,23 @@ const OAuthCallback = () => {
             <>
               <h2 className="font-heading text-2xl text-destructive">Authentication Error</h2>
               <p className="text-muted-foreground">{error}</p>
-              <p className="text-sm text-muted-foreground">Please retry sign in from the landing page.</p>
+              <div className="flex flex-col gap-2 pt-2">
+                <Button
+                  type="button"
+                  className="w-full btn-royal text-primary-foreground border-0"
+                  onClick={redirectToSignIn}
+                >
+                  Try Sign In Again
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-primary/30 hover:bg-primary/10"
+                  onClick={redirectToSignUp}
+                >
+                  Try Sign Up Instead
+                </Button>
+              </div>
             </>
           ) : (
             <>

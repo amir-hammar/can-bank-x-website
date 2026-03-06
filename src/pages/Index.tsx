@@ -1,12 +1,22 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Crown, ArrowRight, Lock, CreditCard, BarChart3, Users, CheckCircle2, Zap, Globe2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
-import { redirectToSignIn, redirectToSignUp } from "@/lib/keycloak";
+import { isAuthenticated, redirectToSignIn, redirectToSignUp } from "@/lib/keycloak";
 import LanguageToggle from "@/components/LanguageToggle";
 import citySkyline from "@/assets/city-skyline.jpg";
 
 const Index = () => {
   const { t } = useI18n();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Keep authenticated sessions out of landing after refresh/redirect races.
+    if (isAuthenticated()) {
+      navigate("/kyc/pending", { replace: true });
+    }
+  }, [navigate]);
 
   const handleSignIn = () => {
     redirectToSignIn();
