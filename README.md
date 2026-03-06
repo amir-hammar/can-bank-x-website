@@ -2,7 +2,7 @@
 
 A modern banking web application built with React, TypeScript, and Vite. Features secure OAuth 2.0 authentication via Keycloak with multi-factor authentication (MFA).
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Development Mode
 
@@ -25,7 +25,7 @@ A modern banking web application built with React, TypeScript, and Vite. Feature
 4. **Access the application:**
    - Frontend: http://localhost:8083
 
-## 🔐 Authentication
+## Authentication
 
 This application uses **OAuth 2.0 Authorization Code Flow** with Keycloak for authentication. All users are required to set up MFA (TOTP) on first login.
 
@@ -42,7 +42,7 @@ This application uses **OAuth 2.0 Authorization Code Flow** with Keycloak for au
 
 For detailed authentication documentation, see [AUTHENTICATION.md](./AUTHENTICATION.md).
 
-## 📝 Environment Variables
+## Environment Variables
 
 Create a `.env` file in the project root:
 
@@ -57,7 +57,7 @@ VITE_KEYCLOAK_CLIENT_ID=can-bank-x-api
 VITE_REDIRECT_URI=http://localhost:8083/callback
 ```
 
-## 🐳 Docker Deployment
+## Docker Deployment
 
 ### 1) Create the shared network (one time)
 
@@ -91,7 +91,7 @@ Nginx proxies these paths over `can-bank-x-network`:
 docker compose down
 ```
 
-## 🛠️ Available Scripts
+## Available Scripts
 
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
@@ -101,7 +101,7 @@ docker compose down
 - `npm test` - Run tests
 - `npm run test:watch` - Run tests in watch mode
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
@@ -112,8 +112,6 @@ src/
 │   └── ...
 ├── pages/            # Page components
 │   ├── Index.tsx
-│   ├── SignIn.tsx
-│   ├── SignUp.tsx
 │   ├── OAuthCallback.tsx
 │   ├── CompleteRegistration.tsx
 │   └── ...
@@ -127,7 +125,7 @@ src/
 └── assets/           # Static assets
 ```
 
-## 🌐 API Integration
+## API Integration
 
 The frontend communicates with the backend through the KrakenD API Gateway. All authenticated requests include a JWT Bearer token.
 
@@ -141,15 +139,15 @@ The frontend communicates with the backend through the KrakenD API Gateway. All 
 
 See [AUTHENTICATION.md](./AUTHENTICATION.md) for complete API documentation.
 
-## 🎨 UI Components
+## UI Components
 
 This project uses [shadcn/ui](https://ui.shadcn.com/) components with Tailwind CSS for styling. Components are fully customizable and follow modern design patterns.
 
-## 🌍 Internationalization
+## Internationalization
 
 The application supports English and French. Language can be toggled using the language selector in the navigation bar.
 
-## 🧪 Testing
+## Testing
 
 Run tests with:
 
@@ -163,7 +161,7 @@ Watch mode:
 npm run test:watch
 ```
 
-## 📦 Tech Stack
+## Tech Stack
 
 - **React 18** - UI framework
 - **TypeScript** - Type safety
@@ -177,7 +175,7 @@ npm run test:watch
 - **Keycloak** - Authentication
 - **Docker** - Containerization
 
-## 🚨 Security Considerations
+## Security Considerations
 
 - JWT tokens stored in localStorage (consider httpOnly cookies for production)
 - All authentication handled by Keycloak
@@ -185,6 +183,4 @@ npm run test:watch
 - HTTPS recommended for production
 - Secure token exchange using OAuth 2.0 Authorization Code Flow
 
-## 📄 License
 
-[Your License Here]

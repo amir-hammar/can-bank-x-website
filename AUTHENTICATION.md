@@ -14,15 +14,14 @@ Frontend (React) <-> API Gateway (KrakenD) <-> Backend Services
 
 ### 1. Sign Up Flow
 
-1. User clicks "Sign Up" on the signup page
-2. Frontend redirects to Keycloak authorization endpoint via KrakenD:
+1. User clicks "Sign Up" (or "Get Started" / "Open Account") on the home page
+2. Frontend redirects to Keycloak registration endpoint via KrakenD:
    ```
-   GET http://localhost:8080/auth/authorize?
+   GET http://localhost:8080/realms/can-bank-x/protocol/openid-connect/registrations?
        client_id=can-bank-x-api&
        redirect_uri=http://localhost:8083/callback&
        response_type=code&
-       scope=openid profile email&
-       state=signup
+      scope=openid profile email
    ```
 
 3. **First-Time User Experience:**
@@ -34,12 +33,12 @@ Frontend (React) <-> API Gateway (KrakenD) <-> Backend Services
 
 4. Frontend receives callback with auth code:
    ```
-   http://localhost:8083/callback?code=AUTH_CODE&state=signup
+   http://localhost:8083/callback?code=AUTH_CODE
    ```
 
 5. Frontend exchanges code for JWT token:
    ```
-   POST http://localhost:8080/auth/token
+   POST http://localhost:8080/auth/realms/can-bank-x/protocol/openid-connect/token
    Content-Type: application/x-www-form-urlencoded
    
    grant_type=authorization_code&
@@ -89,8 +88,15 @@ Frontend (React) <-> API Gateway (KrakenD) <-> Backend Services
 
 ### 2. Sign In Flow
 
-1. User clicks "Sign In" on the signin page
-2. Frontend redirects to Keycloak authorization endpoint
+1. User clicks "Sign In" on the home page
+2. Frontend redirects to Keycloak login endpoint:
+   ```
+   GET http://localhost:8080/realms/can-bank-x/protocol/openid-connect/auth?
+       client_id=can-bank-x-api&
+       redirect_uri=http://localhost:8083/callback&
+       response_type=code&
+       scope=openid profile email
+   ```
 3. **Returning User Experience:**
    - User enters username and password
    - User enters 6-digit code from authenticator app
@@ -115,9 +121,10 @@ The API Gateway (KrakenD) validates the JWT and extracts claims:
 
 ### Authentication (via KrakenD → Keycloak)
 
-- **GET /auth/authorize** - Initiate OAuth flow
-- **POST /auth/token** - Exchange code for token
-- **GET /auth/certs** - Get Keycloak public keys (for JWT validation)
+- **GET /realms/can-bank-x/protocol/openid-connect/auth** - Sign in flow entrypoint
+- **GET /realms/can-bank-x/protocol/openid-connect/registrations** - Sign up flow entrypoint
+- **POST /auth/realms/can-bank-x/protocol/openid-connect/token** - Exchange code for token
+- **GET /auth/realms/can-bank-x/protocol/openid-connect/certs** - Get Keycloak public keys (for JWT validation)
 
 ### User/Customer Management
 
@@ -158,8 +165,10 @@ VITE_REDIRECT_URI=http://localhost:8083/callback
 ### Core Auth Files
 
 - **src/lib/keycloak.ts** - OAuth 2.0 flow implementation
-  - `redirectToLogin()` - Redirects to Keycloak
+   - `redirectToSignIn()` - Redirects to Keycloak sign-in page
+   - `redirectToSignUp()` - Redirects to Keycloak registration page
   - `exchangeCodeForToken()` - Exchanges auth code for JWT
+   - `consumeAuthFlow()` - Reads sign-in/sign-up flow marker during callback
   - `getAccessToken()` - Gets stored token
   - `isAuthenticated()` - Checks if user is logged in
   - `logout()` - Clears tokens
@@ -174,8 +183,7 @@ VITE_REDIRECT_URI=http://localhost:8083/callback
 
 ### Pages
 
-- **src/pages/SignIn.tsx** - Sign in page (redirects to Keycloak)
-- **src/pages/SignUp.tsx** - Sign up page (redirects to Keycloak)
+- **src/pages/Index.tsx** - Home page CTAs redirect directly to Keycloak sign-in/sign-up endpoints
 - **src/pages/OAuthCallback.tsx** - Handles OAuth callback
 - **src/pages/CompleteRegistration.tsx** - Customer registration form
 
@@ -218,8 +226,8 @@ VITE_REDIRECT_URI=http://localhost:8083/callback
 
 ## Testing the Flow
 
-1. Navigate to http://localhost:8083/signup
-2. Click "Sign Up"
+1. Navigate to http://localhost:8083
+2. Click "Get Started" or "Open Account"
 3. You'll be redirected to Keycloak
 4. Create account (username/password)
 5. Scan QR code with Google Authenticator

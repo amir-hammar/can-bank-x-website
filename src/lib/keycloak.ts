@@ -10,20 +10,45 @@ export interface KeycloakTokenResponse {
 const ACCESS_TOKEN_KEY = "canbankx.access_token";
 const REFRESH_TOKEN_KEY = "canbankx.refresh_token";
 const USER_INFO_KEY = "canbankx.user_info";
+const AUTH_FLOW_KEY = "canbankx.auth_flow";
+
+type AuthFlow = "signin" | "signup";
+
+const normalizeGatewayUrl = (value: string | undefined): string => {
+  const trimmed = value?.trim();
+
+  if (!trimmed || trimmed === "undefined" || trimmed === "null") {
+    return "http://localhost:8080";
+  }
+
+  return trimmed.replace(/\/+$/, "");
+};
 
 const getAuthConfig = () => {
-  const gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL
+  const gatewayUrl = normalizeGatewayUrl(import.meta.env.VITE_API_GATEWAY_URL);
   const clientId = import.meta.env.VITE_KEYCLOAK_CLIENT_ID ?? "can-bank-x-api";
   const redirectUri = import.meta.env.VITE_REDIRECT_URI ?? "http://localhost:8083/callback";
 
   return { gatewayUrl, clientId, redirectUri };
 };
 
+const setAuthFlow = (flow: AuthFlow) => {
+  sessionStorage.setItem(AUTH_FLOW_KEY, flow);
+};
+
+export const consumeAuthFlow = (): AuthFlow | null => {
+  const flow = sessionStorage.getItem(AUTH_FLOW_KEY);
+  sessionStorage.removeItem(AUTH_FLOW_KEY);
+
+  return flow === "signin" || flow === "signup" ? flow : null;
+};
+
 /**
- * Initiates the OAuth 2.0 Authorization Code flow by redirecting to Keycloak
+ * Redirects to Keycloak sign-in endpoint
  */
-export const redirectToLogin = () => {
+export const redirectToSignIn = () => {
   const { gatewayUrl, clientId, redirectUri } = getAuthConfig();
+  setAuthFlow("signin");
   
   const params = new URLSearchParams({
     client_id: clientId,
@@ -32,7 +57,24 @@ export const redirectToLogin = () => {
     scope: "openid profile email",
   });
 
-  window.location.href = `${gatewayUrl}/auth/realms/can-bank-x/protocol/openid-connect/auth?${params.toString()}`;
+  window.location.href = `${gatewayUrl}/realms/can-bank-x/protocol/openid-connect/auth?${params.toString()}`;
+};
+
+/**
+ * Redirects to Keycloak registration endpoint
+ */
+export const redirectToSignUp = () => {
+  const { gatewayUrl, clientId, redirectUri } = getAuthConfig();
+  setAuthFlow("signup");
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: "code",
+    scope: "openid profile email",
+  });
+
+  window.location.href = `${gatewayUrl}/realms/can-bank-x/protocol/openid-connect/registrations?${params.toString()}`;
 };
 
 /**

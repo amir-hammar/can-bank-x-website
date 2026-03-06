@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { exchangeCodeForToken, setUserInfo } from "@/lib/keycloak";
+import { consumeAuthFlow, exchangeCodeForToken, setUserInfo } from "@/lib/keycloak";
 import { getCurrentUser } from "@/lib/api";
 import { Crown } from "lucide-react";
 import citySkyline from "@/assets/city-skyline.jpg";
@@ -19,14 +19,14 @@ const OAuthCallback = () => {
       // Check for OAuth errors
       if (errorParam) {
         setError(errorDescription || errorParam);
-        setTimeout(() => navigate("/signin"), 8083);
+        setTimeout(() => navigate("/"), 8083);
         return;
       }
 
       // Check if code is present
       if (!code) {
         setError("No authorization code received");
-        setTimeout(() => navigate("/signin"), 8083);
+        setTimeout(() => navigate("/"), 8083);
         return;
       }
 
@@ -41,7 +41,8 @@ const OAuthCallback = () => {
         // Check if user needs to register as customer
         // If the user is newly created in Keycloak but hasn't registered as a customer,
         // redirect them to complete registration
-        const isNewUser = searchParams.get("state") === "signup";
+        const authFlow = consumeAuthFlow();
+        const isNewUser = searchParams.get("state") === "signup" || authFlow === "signup";
 
         if (isNewUser) {
           // Redirect to complete customer registration
@@ -53,7 +54,7 @@ const OAuthCallback = () => {
       } catch (err) {
         const message = err instanceof Error ? err.message : "Authentication failed";
         setError(message);
-        setTimeout(() => navigate("/signin"), 8083);
+        setTimeout(() => navigate("/"), 8083);
       }
     };
 
