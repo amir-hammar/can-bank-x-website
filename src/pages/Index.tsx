@@ -1,12 +1,30 @@
-import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Crown, ArrowRight, Lock, CreditCard, BarChart3, Users, CheckCircle2, Zap, Globe2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
+import { isAuthenticated, redirectToSignIn, redirectToSignUp } from "@/lib/keycloak";
 import LanguageToggle from "@/components/LanguageToggle";
 import citySkyline from "@/assets/city-skyline.jpg";
 
 const Index = () => {
   const { t } = useI18n();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Keep authenticated sessions out of landing after refresh/redirect races.
+    if (isAuthenticated()) {
+      navigate("/kyc/pending", { replace: true });
+    }
+  }, [navigate]);
+
+  const handleSignIn = () => {
+    redirectToSignIn();
+  };
+
+  const handleSignUp = () => {
+    redirectToSignUp();
+  };
 
   const stats = [
     { value: "1M+", label: t("stats.trust") },
@@ -41,13 +59,11 @@ const Index = () => {
           </div>
           <div className="flex items-center gap-3">
             <LanguageToggle />
-            <Button variant="ghost" size="sm" className="text-foreground hover:text-primary" asChild>
-              <Link to="/signin">{t("nav.signin")}</Link>
+            <Button variant="ghost" size="sm" className="text-foreground hover:text-primary" onClick={handleSignIn}>
+              {t("nav.signin")}
             </Button>
-            <Button size="sm" className="btn-royal text-primary-foreground border-0" asChild>
-              <Link to="/signup">
+            <Button size="sm" className="btn-royal text-primary-foreground border-0" onClick={handleSignUp}>
                 {t("nav.getStarted")} <ArrowRight className="ml-1 h-4 w-4" />
-              </Link>
             </Button>
           </div>
         </div>
@@ -75,13 +91,11 @@ const Index = () => {
               {t("hero.subtitle")}
             </p>
             <div className="mt-10 flex flex-wrap gap-4">
-              <Button size="lg" className="btn-royal text-primary-foreground border-0 text-base px-8" asChild>
-                <Link to="/signup">
+              <Button size="lg" className="btn-royal text-primary-foreground border-0 text-base px-8" onClick={handleSignUp}>
                   {t("hero.openAccount")} <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
               </Button>
-              <Button size="lg" variant="outline" className="border-primary/30 text-foreground hover:bg-primary/10 hover:border-primary/50" asChild>
-                <Link to="/signin">{t("nav.signin")}</Link>
+              <Button size="lg" variant="outline" className="border-primary/30 text-foreground hover:bg-primary/10 hover:border-primary/50" onClick={handleSignIn}>
+                {t("nav.signin")}
               </Button>
             </div>
           </div>
@@ -159,10 +173,8 @@ const Index = () => {
             </ul>
           </div>
           <div className="flex flex-col items-center gap-4">
-            <Button size="lg" className="btn-royal text-primary-foreground border-0 text-base px-10" asChild>
-              <Link to="/signup">
+            <Button size="lg" className="btn-royal text-primary-foreground border-0 text-base px-10" onClick={handleSignUp}>
                 {t("cta.button")} <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
             </Button>
             <p className="text-sm text-muted-foreground">{t("cta.noCreditCheck")}</p>
           </div>
