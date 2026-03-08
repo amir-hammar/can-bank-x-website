@@ -305,6 +305,26 @@ export const getAccountDetails = async (accountId: string): Promise<unknown> => 
 };
 
 /**
+ * Get the logged-in user's default account
+ */
+export const getDefaultAccount = async (customerId: string): Promise<unknown> => {
+  const endpoint = `/api/v1/accounts/default?customer_id=${encodeURIComponent(customerId)}`;
+  return apiRequest(endpoint, {
+    method: "GET",
+  });
+};
+
+/**
+ * Get balance for a specific account
+ */
+export const getAccountBalance = async (accountId: string): Promise<unknown> => {
+  const endpoint = `/api/v1/accounts/balance?account_id=${encodeURIComponent(accountId)}`;
+  return apiRequest(endpoint, {
+    method: "GET",
+  });
+};
+
+/**
  * Creates a new account for the authenticated user.
  *
  * Integration point: confirm payload/response contract with backend and
@@ -322,28 +342,29 @@ export const createBankAccount = async (
 // ==================== Transfer APIs ====================
 
 export interface TransferData {
+  customer_id: string;
   from_account_id: string;
-  to_account_id: string;
+  beneficiary_username: string;
   amount: number;
-  currency: string;
-  description?: string;
+  idempotency_key: string;
 }
 
 /**
  * Create a new transfer
  */
 export const createTransfer = async (data: TransferData): Promise<unknown> => {
-  return apiRequest("/api/v1/transfers/create", {
+  return apiRequest("/api/v1/transfers", {
     method: "POST",
     body: JSON.stringify(data),
   });
 };
 
 /**
- * Get transfer history
+ * Get recent transfers for a customer
  */
-export const getTransferHistory = async (): Promise<unknown> => {
-  return apiRequest("/api/v1/transfers/history", {
+export const getTransfers = async (customerId: string, limit: number = 10): Promise<unknown> => {
+  const endpoint = `/api/v1/transfers?customer_id=${encodeURIComponent(customerId)}&limit=${limit}`;
+  return apiRequest(endpoint, {
     method: "GET",
   });
 };
