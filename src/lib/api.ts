@@ -152,6 +152,9 @@ export interface KYCStatusResponse {
   remainingSeconds?: number;
   remaining_minutes?: number;
   remainingMinutes?: number;
+  kyc_approved?: boolean;
+  kyc_decision_available_in_seconds?: number;
+  customer_id?: string;
   [key: string]: unknown;
 }
 
@@ -253,13 +256,41 @@ export const getKYCStatus = async (): Promise<KYCStatusResponse> => {
   });
 };
 
+/**
+ * Poll KYC status with retries to allow backend database time to update
+ * Retries every 1 second for up to 3 attempts
+ */
+export const pollKYCStatus = async (maxAttempts: number = 3): Promise<KYCStatusResponse> => {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const status = await getKYCStatus();
+      return status;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      // If it's the last attempt, throw the error
+      if (attempt === maxAttempts) {
+        throw lastError;
+      }
+
+      // Wait 1 second before retrying
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+
+  throw lastError || new Error("Failed to poll KYC status");
+};
+
 // ==================== Account APIs ====================
 
 /**
  * Get accounts for the authenticated user
  */
-export const getAccounts = async (): Promise<unknown> => {
-  return apiRequest("/api/v1/accounts/list", {
+export const getAccounts = async (customerId?: string): Promise<unknown> => {
+  const endpoint = customerId ? `/api/v1/accounts?customer_id=${encodeURIComponent(customerId)}` : "/api/v1/accounts";
+  return apiRequest(endpoint, {
     method: "GET",
   });
 };

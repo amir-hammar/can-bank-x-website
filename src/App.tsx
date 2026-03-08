@@ -9,6 +9,7 @@ import OAuthCallback from "./pages/OAuthCallback";
 import KycPending from "./pages/KycPending";
 import KycRefused from "./pages/KycRefused";
 import UserHome from "./pages/UserHome";
+import BankAccounts from "./pages/BankAccounts";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/kyc/pending" element={<KycPending />} />
             <Route path="/kyc/refused" element={<KycRefused />} />
             <Route path="/home" element={<UserHome />} />
+            <Route path="/accounts" element={<BankAccounts />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

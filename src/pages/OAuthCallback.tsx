@@ -7,7 +7,7 @@ import {
   redirectToSignUp,
   setUserInfo,
 } from "@/lib/keycloak";
-import { ApiError, getCurrentUser, registerCustomer } from "@/lib/api";
+import { ApiError, getCurrentUser, registerCustomer, normalizeKYCDecision } from "@/lib/api";
 import { setPendingCustomerId } from "@/lib/kyc";
 import { Button } from "@/components/ui/button";
 import { Crown } from "lucide-react";
@@ -100,6 +100,34 @@ const getErrorText = (err: unknown): string => {
   return "Authentication failed";
 };
 
+const getCountdownSeconds = (userInfo: unknown): number | null => {
+  const record = asRecord(userInfo);
+  if (!record) {
+    return null;
+  }
+
+  const value = record.kyc_decision_available_in_seconds;
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+    return Math.floor(value);
+  }
+
+  return null;
+};
+
+const getKYCStatusFromUser = (userInfo: unknown): string | null => {
+  const record = asRecord(userInfo);
+  if (!record) {
+    return null;
+  }
+
+  const kycStatus = record.kyc_status;
+  if (typeof kycStatus === "string" && kycStatus.trim()) {
+    return kycStatus.trim();
+  }
+
+  return null;
+};
+
 const OAuthCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -149,53 +177,47 @@ const OAuthCallback = () => {
             .join(" ") ||
           preferredUsername);
 
-        // Fetch user info
-        let userInfo: unknown;
-        const ensureCustomerProfile = async () => {
-          try {
-            await registerCustomer({
-              username: preferredUsername,
-              email,
-              full_name: fullName,
-              street: "100 Main",
-              city: "Montreal",
-              province: "QC",
-              postal_code: "H2X 1Z5",
-              country: "Canada",
-              nas: "123456789",
-            });
-          } catch (registerErr) {
-            // Ignore conflicts (already created) and continue with a refetch.
-            if (!(registerErr instanceof ApiError && registerErr.status === 409)) {
-              throw registerErr;
-            }
-          }
-        };
-
+        // Register customer (starts countdown)
         try {
-          userInfo = await getCurrentUser();
-        } catch (err) {
-          const isMissingCustomerError =
-            err instanceof ApiError &&
-            (err.status === 404 ||
-              (err.status === 500 && err.message.toLowerCase().includes("invalid status code")));
-
-          if (isMissingCustomerError) {
-            await ensureCustomerProfile();
-            userInfo = await getCurrentUser();
-          } else {
-            throw err;
+          await registerCustomer({
+            username: preferredUsername,
+            email,
+            full_name: fullName,
+            street: "100 Main",
+            city: "Montreal",
+            province: "QC",
+            postal_code: "H2X 1Z5",
+            country: "Canada",
+            nas: "123456789",
+          });
+        } catch (registerErr) {
+          // Ignore conflicts (already created) and continue
+          if (!(registerErr instanceof ApiError && registerErr.status === 409)) {
+            throw registerErr;
           }
         }
 
+        // Get user info
+        const userInfo = await getCurrentUser();
         setUserInfo(userInfo);
+
         const customerId = getCustomerIdFromUser(userInfo);
         if (customerId) {
           setPendingCustomerId(customerId);
         }
 
-        // Product rule: any successful auth continues to KYC pending.
-        navigate("/kyc/pending", { replace: true });
+        // Check if KYC is already approved
+        const kycStatusRaw = getKYCStatusFromUser(userInfo);
+        const kycStatus = normalizeKYCDecision(kycStatusRaw ?? undefined);
+        
+        // Only wait if KYC is not yet approved (for first-time registrations)
+        if (kycStatus !== "approved") {
+          // Wait 20 seconds to allow backend to update customer profile and KYC status
+          await new Promise((resolve) => setTimeout(resolve, 20000));
+        }
+
+        // Navigate to home
+        navigate("/home", { replace: true });
       } catch (err) {
         setError(getErrorText(err));
       }
