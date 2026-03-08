@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Crown, LogOut, WalletCards } from "lucide-react";
+import { CheckCircle2, Crown, LogOut, WalletCards, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import citySkyline from "@/assets/city-skyline.jpg";
@@ -264,6 +264,33 @@ const UserHome = () => {
               onClick={() => navigate("/accounts")}
             >
               View All Accounts
+            </Button>
+          </div>
+        </section>
+
+        <section className="glass-card rounded-2xl p-5 sm:p-6">
+          <h2 className="font-heading text-2xl text-foreground mb-4">Quick Actions</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button
+              onClick={() => navigate("/transfers")}
+              className="btn-royal border-0 text-primary-foreground justify-start h-auto py-3"
+            >
+              <Send className="mr-2 h-4 w-4" />
+              <div className="flex flex-col items-start">
+                <span>Transfer Money</span>
+                <span className="text-xs opacity-90">Send money to another user</span>
+              </div>
+            </Button>
+            <Button
+              onClick={() => navigate("/accounts")}
+              variant="outline"
+              className="border-primary/30 hover:bg-primary/10 justify-start h-auto py-3"
+            >
+              <WalletCards className="mr-2 h-4 w-4" />
+              <div className="flex flex-col items-start">
+                <span>Manage Accounts</span>
+                <span className="text-xs opacity-75">Create or view your accounts</span>
+              </div>
             </Button>
           </div>
         </section>

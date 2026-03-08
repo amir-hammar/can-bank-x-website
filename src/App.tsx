@@ -10,6 +10,7 @@ import KycPending from "./pages/KycPending";
 import KycRefused from "./pages/KycRefused";
 import UserHome from "./pages/UserHome";
 import BankAccounts from "./pages/BankAccounts";
+import Transfer from "./pages/Transfer";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/kyc/refused" element={<KycRefused />} />
             <Route path="/home" element={<UserHome />} />
             <Route path="/accounts" element={<BankAccounts />} />
+            <Route path="/transfers" element={<Transfer />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
