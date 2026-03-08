@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Crown, LogOut, PlusCircle, RefreshCw, WalletCards } from "lucide-react";
+import { CheckCircle2, Crown, LogOut, WalletCards } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import citySkyline from "@/assets/city-skyline.jpg";
-import { ApiError, createBankAccount, getAccounts, getCurrentUser } from "@/lib/api";
+import { ApiError, getAccounts, getCurrentUser, normalizeKYCDecision } from "@/lib/api";
 import { logout, logoutFromGateway, redirectToSignIn } from "@/lib/keycloak";
 
 type DisplayAccount = {
@@ -17,6 +17,17 @@ type DisplayAccount = {
 const asRecord = (value: unknown): Record<string, unknown> | null => {
   if (value && typeof value === "object") {
     return value as Record<string, unknown>;
+  }
+
+  return null;
+};
+
+const getStringFromRecord = (record: Record<string, unknown>, keys: string[]): string | null => {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
   }
 
   return null;
@@ -70,11 +81,11 @@ const formatAccount = (raw: unknown, index: number): DisplayAccount => {
 const UserHome = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userPayload, setUserPayload] = useState<unknown>(null);
   const [accountsPayload, setAccountsPayload] = useState<unknown>(null);
+  const [kycStatus, setKycStatus] = useState<"pending" | "approved" | "refused" | "unknown">("unknown");
 
   const accounts = useMemo(() => {
     return getAccountItems(accountsPayload).map(formatAccount);
@@ -100,9 +111,23 @@ const UserHome = () => {
       }
 
       try {
-        const [user, accountsData] = await Promise.all([getCurrentUser(), getAccounts()]);
+        const user = await getCurrentUser();
         setUserPayload(user);
+        
+        // Extract KYC status and customer_id from user payload
+        const userRecord = asRecord(user);
+        const kycStatusValue = userRecord?.kyc_status as string | undefined;
+        const customerId = getStringFromRecord(userRecord ?? {}, ["customer_id", "customerId"]) ?? null;
+        
+        console.log("UserHome - User record fields:", userRecord ? Object.keys(userRecord) : "null");
+        console.log("UserHome - KYC status value:", kycStatusValue);
+        console.log("UserHome - Customer ID value:", customerId);
+        
+        // Get accounts using customer_id if available
+        const accountsData = await getAccounts(customerId ?? undefined);
         setAccountsPayload(accountsData);
+        
+        setKycStatus(normalizeKYCDecision(kycStatusValue));
         setError(null);
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) {
@@ -110,8 +135,14 @@ const UserHome = () => {
           return;
         }
 
-        const message = err instanceof Error ? err.message : "Unable to load your dashboard.";
-        setError(message);
+        // Treat 404 as empty state (no accounts found) rather than error
+        if (err instanceof ApiError && err.status === 404) {
+          setAccountsPayload([]);
+          setError(null);
+        } else {
+          const message = err instanceof Error ? err.message : "Unable to load your dashboard.";
+          setError(message);
+        }
       } finally {
         setIsLoading(false);
         setIsRefreshing(false);
@@ -123,26 +154,6 @@ const UserHome = () => {
   useEffect(() => {
     void fetchData();
   }, [fetchData]);
-
-  const handleCreateAccount = async () => {
-    setIsCreating(true);
-
-    try {
-      await createBankAccount({});
-      toast.success("Bank account request submitted.");
-      await fetchData(true);
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        handleUnauthorized();
-        return;
-      }
-
-      const message = err instanceof Error ? err.message : "Unable to create an account right now.";
-      toast.error(message);
-    } finally {
-      setIsCreating(false);
-    }
-  };
 
   const userRecord = asRecord(userPayload);
   const displayName =
@@ -158,6 +169,20 @@ const UserHome = () => {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsla(225,73%,50%,0.08),transparent_60%)]" />
 
       <div className="relative z-10 mx-auto w-full max-w-4xl space-y-6">
+        {kycStatus === "approved" && (
+          <section className="glass-card rounded-2xl border border-green-500/30 bg-gradient-to-r from-green-500/10 to-emerald-500/10 p-5 sm:p-6">
+            <div className="flex items-start gap-4">
+              <CheckCircle2 className="mt-0.5 h-6 w-6 text-green-500 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-heading text-lg text-foreground">KYC Verification Approved</h3>
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  Congratulations! Your identity verification has been approved. You can now enjoy all banking features.
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
+
         <header className="glass-card rounded-2xl p-5 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -186,28 +211,7 @@ const UserHome = () => {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-heading text-2xl text-foreground">Your Accounts</h2>
-              <p className="text-sm text-muted-foreground">Data is loaded from the API gateway.</p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="border-primary/30 hover:bg-primary/10"
-                onClick={() => void fetchData(true)}
-                disabled={isRefreshing || isLoading}
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-                Refresh
-              </Button>
-              <Button
-                type="button"
-                className="btn-royal border-0 text-primary-foreground"
-                onClick={() => void handleCreateAccount()}
-                disabled={isCreating}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                {isCreating ? "Creating..." : "Create Bank Account"}
-              </Button>
+              <p className="text-sm text-muted-foreground">View your latest accounts</p>
             </div>
           </div>
 
@@ -235,7 +239,7 @@ const UserHome = () => {
               <WalletCards className="mx-auto h-8 w-8 text-primary" />
               <p className="mt-3 text-foreground">No bank account found yet.</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Use the button above to create your first account.
+                Visit the Bank Accounts page to create your first account.
               </p>
             </div>
           )}
@@ -252,17 +256,18 @@ const UserHome = () => {
               ))}
             </div>
           )}
+
+          <div className="pt-2">
+            <Button
+              variant="outline"
+              className="border-primary/30 hover:bg-primary/10"
+              onClick={() => navigate("/accounts")}
+            >
+              View All Accounts
+            </Button>
+          </div>
         </section>
 
-        <div className="text-center">
-          <Button
-            variant="ghost"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={() => navigate("/")}
-          >
-            Back to landing page
-          </Button>
-        </div>
       </div>
     </div>
   );
