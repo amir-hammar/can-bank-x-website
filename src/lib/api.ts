@@ -377,3 +377,41 @@ export const checkHealth = async (): Promise<{ status: string }> => {
     method: "GET",
   });
 };
+
+// ==================== Central Bank APIs ====================
+
+export const getCentralBankStatus = async (): Promise<unknown> =>
+  apiRequest("/api/v1/central-bank/status", { method: "GET" });
+
+export const registerAlias = async (data: { alias: string; account_id: string; customer_id?: string; holder_name: string }): Promise<unknown> =>
+  apiRequest("/api/v1/central-bank/aliases", { method: "POST", body: JSON.stringify(data) });
+
+export const listAliases = async (accountId?: string): Promise<unknown> =>
+  apiRequest(`/api/v1/central-bank/aliases${accountId ? `?account_id=${encodeURIComponent(accountId)}` : ''}`, { method: "GET" });
+
+export const lookupAlias = async (alias: string): Promise<unknown> =>
+  apiRequest(`/api/v1/central-bank/aliases/lookup?alias=${encodeURIComponent(alias)}`, { method: "GET" });
+
+export const deleteAlias = async (alias: string): Promise<unknown> =>
+  apiRequest(`/api/v1/central-bank/aliases/${encodeURIComponent(alias)}`, { method: "DELETE" });
+
+export const initiateCentralPayment = async (data: { source_account_id: string; beneficiary_alias: string; amount: number; currency: string; idempotency_key: string }): Promise<unknown> =>
+  apiRequest("/api/v1/central-bank/payments", { method: "POST", body: JSON.stringify(data) });
+
+export const listCentralPayments = async (accountId: string): Promise<unknown> =>
+  apiRequest(`/api/v1/central-bank/payments?account_id=${encodeURIComponent(accountId)}`, { method: "GET" });
+
+export const requestAliasTransfer = async (data: { alias: string; receiving_account_id: string }): Promise<unknown> =>
+  apiRequest("/api/v1/central-bank/alias-transfers", { method: "POST", body: JSON.stringify(data) });
+
+export const listPendingTransfers = async (accountId?: string): Promise<unknown> =>
+  apiRequest(`/api/v1/central-bank/alias-transfers/pending${accountId ? `?account_id=${encodeURIComponent(accountId)}` : ''}`, { method: "GET" });
+
+export const approveAliasTransfer = async (transferId: string): Promise<unknown> =>
+  apiRequest(`/api/v1/central-bank/alias-transfers/${transferId}/approve`, { method: "POST" });
+
+export const denyAliasTransfer = async (transferId: string, reason: string): Promise<unknown> =>
+  apiRequest(`/api/v1/central-bank/alias-transfers/${transferId}/deny`, { method: "POST", body: JSON.stringify({ reason }) });
+
+export const getCentralSettlement = async (from: string, to: string): Promise<unknown> =>
+  apiRequest(`/api/v1/central-bank/settlement?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { method: "GET" });

@@ -292,6 +292,17 @@ const UserHome = () => {
                 <span className="text-xs opacity-75">Create or view your accounts</span>
               </div>
             </Button>
+            <Button
+              onClick={() => navigate("/central-bank")}
+              variant="outline"
+              className="border-primary/30 hover:bg-primary/10 justify-start h-auto py-3"
+            >
+              <Send className="mr-2 h-4 w-4" />
+              <div className="flex flex-col items-start">
+                <span>Central Bank</span>
+                <span className="text-xs opacity-75">Interbank payments & aliases</span>
+              </div>
+            </Button>
           </div>
         </section>
 
