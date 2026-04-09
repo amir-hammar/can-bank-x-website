@@ -56,6 +56,7 @@ export default function CentralBank() {
   const [lookupResult, setLookupResult] = useState<Lookup | null>(null);
   const [payAlias, setPayAlias] = useState("");
   const [payAmount, setPayAmount] = useState("");
+  const [payFromAccount, setPayFromAccount] = useState("");
   const [transferAlias, setTransferAlias] = useState("");
 
   const refresh = useCallback(async () => {
@@ -74,17 +75,18 @@ export default function CentralBank() {
   useEffect(() => {
     (async () => {
       try {
-        const [s, u, accs] = await Promise.all([
+        const [s, u] = await Promise.all([
           getCentralBankStatus().catch(() => null),
           getCurrentUser().catch(() => null),
-          getAccounts().catch(() => []),
         ]);
         setStatus(s as typeof status);
         const user = u as Record<string, unknown> | null;
         if (user) setHolderInput((user.full_name || user.name || "") as string);
+        const customerId = (user?.customer_id || user?.id || "") as string;
+        const accs = customerId ? await getAccounts(customerId).catch(() => []) : [];
         const parsed = parseAccounts(accs);
         setAccounts(parsed);
-        if (parsed.length > 0) setSelectedAccount(parsed[0].id);
+        if (parsed.length > 0) { setSelectedAccount(parsed[0].id); setPayFromAccount(parsed[0].id); }
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) redirectToSignIn();
       } finally { setLoading(false); }
@@ -181,7 +183,8 @@ export default function CentralBank() {
               <Send className="h-5 w-5 text-primary" />
               <h2 className="font-heading text-lg font-bold">Interbank Payment</h2>
             </div>
-            <form onSubmit={(e) => { e.preventDefault(); handle(async () => { await initiateCentralPayment({ source_account_id: selectedAccount, beneficiary_alias: payAlias.trim(), amount: parseFloat(payAmount), currency: "CAD", idempotency_key: uuid() }); toast.success("Payment sent"); setPayAlias(""); setPayAmount(""); }); }} className="space-y-3">
+            <form onSubmit={(e) => { e.preventDefault(); handle(async () => { await initiateCentralPayment({ source_account_id: payFromAccount, beneficiary_alias: payAlias.trim(), amount: parseFloat(payAmount), currency: "CAD", idempotency_key: uuid() }); toast.success("Payment sent"); setPayAlias(""); setPayAmount(""); }); }} className="space-y-3">
+              <div><Label>From account</Label><select value={payFromAccount} onChange={(e) => setPayFromAccount(e.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm">{accounts.map((a) => <option key={a.id} value={a.id}>{a.type} — ${a.balance.toFixed(2)} — {a.id.slice(0, 8)}…</option>)}</select></div>
               <div><Label>Beneficiary alias</Label><Input value={payAlias} onChange={(e) => setPayAlias(e.target.value)} placeholder="recipient@otherbank.com" /></div>
               <div><Label>Amount (CAD)</Label><Input type="number" step="0.01" min="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} placeholder="0.00" /></div>
               <Button type="submit" className="w-full"><Send className="mr-2 h-4 w-4" />Send</Button>
